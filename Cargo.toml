@@ -7,3 +7,11 @@ edition = "2018"
 
 [dependencies]
 sdl2 = "0.35"
+
+[lib]
+name = "sdl_wrapper"
+path = "src/lib.rs"
+
+[[bin]]
+name = "paint_quadrants"
+path = "src/example.rs"
