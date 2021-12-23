@@ -74,6 +74,12 @@ impl ScreenContextManager {
         self.framebuffer[i + 2] = self.color.b;
     }
 
+    /// Clears the entire framebuffer with a grey shadow given by a real number in the range [0,
+    /// 1].
+    pub fn clear(&mut self, shadow: f32) {
+        self.framebuffer.fill((shadow * 255 as f32).round() as u8);
+    }
+
     /// Presents the current contents of the framebuffer on the window's canvas
     pub fn present(&mut self) {
         let mut texture = self
