@@ -8,6 +8,8 @@ edition = "2018"
 [dependencies]
 sdl2 = "0.35"
 thiserror = "1.0"
+futures = "0.3"
+bytemuck = { version = "1.7.3", features = ["derive"] }
 
 [lib]
 name = "sdl_wrapper"

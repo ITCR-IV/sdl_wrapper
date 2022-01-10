@@ -1,3 +1,4 @@
+use futures::executor::block_on;
 use sdl_wrapper::{Event, Keycode, ScreenContextManager};
 use std::time::SystemTime;
 
@@ -9,9 +10,13 @@ pub const WINDOW_WIDTH: u32 = 1000;
 
 fn main() {
     // Inicializar context manager de la ventana
-    let mut screen: ScreenContextManager =
+    let screen: ScreenContextManager =
         ScreenContextManager::new("Tarea1", WINDOW_WIDTH, WINDOW_HEIGHT).unwrap();
+    block_on(screen_loop(screen));
+}
 
+async fn screen_loop(mut screen: ScreenContextManager) {
+    let mut red = 1.0;
     'main: loop {
         // Tomar segundos ( módulo 256 )
         let secs = (SystemTime::now()
@@ -52,7 +57,7 @@ fn main() {
         }
 
         // Cuadrante II
-        screen.set_color(1.0, 0.0, 0.0);
+        screen.set_color(red, 0.0, 0.0);
         for y in 0..WINDOW_HEIGHT / 2 {
             for x in 0..WINDOW_WIDTH / 2 {
                 // Dibujar rojo
@@ -62,6 +67,7 @@ fn main() {
 
         screen
             .present()
+            .await
             .unwrap_or_else(|err| println!("Error while presenting screen: {}", err));
 
         // Manejo de eventos
@@ -73,6 +79,14 @@ fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'main,
+                Event::KeyDown {
+                    keycode: Some(Keycode::M),
+                    ..
+                } => red = 1.0,
+                Event::KeyDown {
+                    keycode: Some(Keycode::N),
+                    ..
+                } => red = 0.2,
                 _ => (),
             }
         }

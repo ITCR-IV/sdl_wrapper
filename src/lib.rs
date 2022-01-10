@@ -4,8 +4,9 @@
 mod constants;
 
 use crate::constants::COLOR_DEPTH;
+use bytemuck::{self, Pod, Zeroable};
 use sdl2::{
-    pixels::{Color, PixelFormatEnum},
+    pixels::PixelFormatEnum,
     render::{Canvas, TextureCreator},
     video::{Window, WindowContext},
     EventPump,
@@ -17,13 +18,21 @@ pub use sdl2::{
     keyboard::Keycode,
 };
 
+#[derive(Copy, Clone, Pod, Zeroable)]
+#[repr(C)]
+struct Pixel {
+    r: u8,
+    g: u8,
+    b: u8,
+}
+
 /// This struct abstracts away any direct interaction with the SDL module, so that the user may
 /// only need to call the provided methods without `use`ing any sdl modules.
 pub struct ScreenContextManager {
     canvas: Canvas<Window>,
-    framebuffer: Vec<u8>,
+    framebuffer: Vec<Pixel>,
     texture_creator: TextureCreator<WindowContext>,
-    color: Color,
+    color: Pixel,
     event_pump: EventPump,
     height: u32,
     width: u32,
@@ -45,10 +54,10 @@ impl ScreenContextManager {
         Ok(ScreenContextManager {
             canvas,
             // Create empty framebuffer
-            framebuffer: vec![0; (width * COLOR_DEPTH * height) as usize],
+            framebuffer: vec![Pixel { r: 0, g: 0, b: 0 }; (width * height) as usize],
             texture_creator,
             event_pump,
-            color: Color::RGB(0, 0, 0),
+            color: Pixel { r: 0, g: 0, b: 0 },
             height,
             width,
             width_times_color: width * COLOR_DEPTH,
@@ -58,52 +67,56 @@ impl ScreenContextManager {
     /// Sets the color to be used for drawing operations.
     /// Parameters correspond to RGB colors and must be real numbers in the range [0, 1].
     pub fn set_color(&mut self, r: f32, g: f32, b: f32) {
-        self.color = Color::RGB(
-            (r * 255.0).round() as u8,
-            (g * 255.0).round() as u8,
-            (b * 255.0).round() as u8,
-        );
+        self.color = Pixel {
+            r: (r * 255.0).round() as u8,
+            g: (g * 255.0).round() as u8,
+            b: (b * 255.0).round() as u8,
+        };
     }
 
     /// Plots a single pixel on the framebuffer.
     pub fn plot_pixel(&mut self, x: u32, y: u32) {
-        let i = (y * self.width_times_color + x * COLOR_DEPTH) as usize;
+        let i = (y * self.width + x) as usize;
         //println!("Drawing to {}, {}, {}", i, i + 1, i + 2);
-        self.framebuffer[i] = self.color.r;
-        self.framebuffer[i + 1] = self.color.g;
-        self.framebuffer[i + 2] = self.color.b;
+        self.framebuffer[i] = self.color;
     }
 
     /// Clears the entire framebuffer with a grey shadow given by a real number in the range [0,
     /// 1].
     pub fn clear(&mut self, shadow: f32) {
-        self.framebuffer.fill((shadow * 255.0).round() as u8);
+        let shadow = Pixel {
+            r: (shadow * 255.0).round() as u8,
+            g: (shadow * 255.0).round() as u8,
+            b: (shadow * 255.0).round() as u8,
+        };
+        self.framebuffer.fill(shadow);
     }
 
     /// Clears the entire framebuffer with the given color.
     /// Parameters correspond to RGB colors and must be real numbers in the range [0, 1].
     pub fn clear_with_rgb(&mut self, r: f32, g: f32, b: f32) {
-        let color = [
-            (r * 255.0).round() as u8,
-            (g * 255.0).round() as u8,
-            (b * 255.0).round() as u8,
-        ];
-        let mut index = 0;
-        self.framebuffer.fill_with(|| {
-            index += 1;
-            color[index % 3]
-        });
+        let color = Pixel {
+            r: (r * 255.0).round() as u8,
+            g: (g * 255.0).round() as u8,
+            b: (b * 255.0).round() as u8,
+        };
+
+        self.framebuffer.fill(color);
     }
 
     /// Presents the current contents of the framebuffer on the window's canvas
-    pub fn present(&mut self) -> Result<(), PresentationError> {
+    pub async fn present(&mut self) -> Result<(), PresentationError> {
         let mut texture = self.texture_creator.create_texture_streaming(
             PixelFormatEnum::RGB24,
             self.width,
             self.height,
         )?;
 
-        texture.update(None, &self.framebuffer, (self.width_times_color) as usize)?;
+        texture.update(
+            None,
+            bytemuck::cast_slice(&self.framebuffer),
+            (self.width_times_color) as usize,
+        )?;
 
         self.canvas.copy(&texture, None, None)?;
         self.canvas.present();
