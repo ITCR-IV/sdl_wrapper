@@ -5,7 +5,6 @@ mod constants;
 
 use crate::constants::COLOR_DEPTH;
 use sdl2::{
-    event::EventPollIterator,
     pixels::{Color, PixelFormatEnum},
     render::{Canvas, TextureCreator},
     video::{Window, WindowContext},
@@ -13,7 +12,10 @@ use sdl2::{
 };
 use thiserror::Error;
 
-pub use sdl2::{event::Event, keyboard::Keycode};
+pub use sdl2::{
+    event::{Event, EventPollIterator},
+    keyboard::Keycode,
+};
 
 /// This struct abstracts away any direct interaction with the SDL module, so that the user may
 /// only need to call the provided methods without `use`ing any sdl modules.
