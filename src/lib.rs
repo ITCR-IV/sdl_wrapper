@@ -59,9 +59,9 @@ impl ScreenContextManager {
     /// Parameters correspond to RGB colors and must be real numbers in the range [0, 1].
     pub fn set_color(&mut self, r: f32, g: f32, b: f32) {
         self.color = Color::RGB(
-            (r * 255 as f32).round() as u8,
-            (g * 255 as f32).round() as u8,
-            (b * 255 as f32).round() as u8,
+            (r * 255.0).round() as u8,
+            (g * 255.0).round() as u8,
+            (b * 255.0).round() as u8,
         );
     }
 
@@ -77,7 +77,22 @@ impl ScreenContextManager {
     /// Clears the entire framebuffer with a grey shadow given by a real number in the range [0,
     /// 1].
     pub fn clear(&mut self, shadow: f32) {
-        self.framebuffer.fill((shadow * 255 as f32).round() as u8);
+        self.framebuffer.fill((shadow * 255.0).round() as u8);
+    }
+
+    /// Clears the entire framebuffer with the given color.
+    /// Parameters correspond to RGB colors and must be real numbers in the range [0, 1].
+    pub fn clear_with_rgb(&mut self, r: f32, g: f32, b: f32) {
+        let color = [
+            (r * 255.0).round() as u8,
+            (g * 255.0).round() as u8,
+            (b * 255.0).round() as u8,
+        ];
+        let mut index = 0;
+        self.framebuffer.fill_with(|| {
+            index += 1;
+            color[index % 3]
+        });
     }
 
     /// Presents the current contents of the framebuffer on the window's canvas
