@@ -11,6 +11,7 @@ use sdl2::{
     video::{Window, WindowContext},
     EventPump,
 };
+use thiserror::Error;
 
 pub use sdl2::{event::Event, keyboard::Keycode};
 
@@ -29,20 +30,17 @@ pub struct ScreenContextManager {
 
 impl ScreenContextManager {
     /// Creates a new object, with the side-effect of creating a new window with the title given.
-    pub fn new(title: &str, width: u32, height: u32) -> ScreenContextManager {
-        let sdl = sdl2::init().unwrap();
-        let video_subsystem = sdl.video().unwrap();
-        let window = video_subsystem
-            .window(title, width, height)
-            .build()
-            .unwrap();
+    pub fn new(title: &str, width: u32, height: u32) -> Result<ScreenContextManager, InitError> {
+        let sdl = sdl2::init()?;
+        let video_subsystem = sdl.video()?;
+        let window = video_subsystem.window(title, width, height).build()?;
 
-        let canvas = window.into_canvas().accelerated().build().unwrap();
+        let canvas = window.into_canvas().accelerated().build()?;
 
         let texture_creator = canvas.texture_creator();
-        let event_pump = sdl.event_pump().unwrap();
+        let event_pump = sdl.event_pump()?;
 
-        ScreenContextManager {
+        Ok(ScreenContextManager {
             canvas,
             // Create empty framebuffer
             framebuffer: vec![0; (width * COLOR_DEPTH * height) as usize],
@@ -52,7 +50,7 @@ impl ScreenContextManager {
             height,
             width,
             width_times_color: width * COLOR_DEPTH,
-        }
+        })
     }
 
     /// Sets the color to be used for drawing operations.
@@ -81,23 +79,56 @@ impl ScreenContextManager {
     }
 
     /// Presents the current contents of the framebuffer on the window's canvas
-    pub fn present(&mut self) {
-        let mut texture = self
-            .texture_creator
-            .create_texture_streaming(PixelFormatEnum::RGB24, self.width, self.height)
-            .unwrap();
+    pub fn present(&mut self) -> Result<(), PresentationError> {
+        let mut texture = self.texture_creator.create_texture_streaming(
+            PixelFormatEnum::RGB24,
+            self.width,
+            self.height,
+        )?;
 
-        texture
-            .update(None, &self.framebuffer, (self.width_times_color) as usize)
-            .unwrap();
+        texture.update(None, &self.framebuffer, (self.width_times_color) as usize)?;
 
-        self.canvas.copy(&texture, None, None).unwrap();
+        self.canvas.copy(&texture, None, None)?;
         self.canvas.present();
+
+        Ok(())
     }
 
     /// Returns an iterator that will hold all the current window events. The iterator will
     /// terminate once there are no pending events.
     pub fn get_events(&mut self) -> EventPollIterator {
         self.event_pump.poll_iter()
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum InitError {
+    #[error("{0}")]
+    Sdl2InitError(String),
+    #[error("failed to build the sdl2 window")]
+    WindowBuildError(#[from] sdl2::video::WindowBuildError),
+    #[error("failed to create the sdl2 canvas from the window for internal drawing")]
+    CanvasBuildError(#[from] sdl2::IntegerOrSdlError),
+}
+
+impl From<String> for InitError {
+    fn from(msg: String) -> Self {
+        InitError::Sdl2InitError(msg)
+    }
+}
+
+#[derive(Error, Debug)]
+pub enum PresentationError {
+    #[error("{0}")]
+    CanvasCopy(String),
+    #[error("{0}")]
+    TextureUpdate(#[from] sdl2::render::UpdateTextureError),
+    #[error("{0}")]
+    TextureValue(#[from] sdl2::render::TextureValueError),
+}
+
+impl From<String> for PresentationError {
+    fn from(msg: String) -> Self {
+        PresentationError::CanvasCopy(msg)
     }
 }

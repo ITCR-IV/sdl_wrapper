@@ -9,7 +9,8 @@ pub const WINDOW_WIDTH: u32 = 1000;
 
 fn main() {
     // Inicializar context manager de la ventana
-    let mut screen = ScreenContextManager::new("Tarea1", WINDOW_WIDTH, WINDOW_HEIGHT);
+    let mut screen: ScreenContextManager =
+        ScreenContextManager::new("Tarea1", WINDOW_WIDTH, WINDOW_HEIGHT).unwrap();
 
     'main: loop {
         // Tomar segundos ( módulo 256 )
@@ -59,7 +60,9 @@ fn main() {
             }
         }
 
-        screen.present();
+        screen
+            .present()
+            .unwrap_or_else(|err| println!("Error while presenting screen: {}", err));
 
         // Manejo de eventos
         for event in screen.get_events() {
