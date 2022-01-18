@@ -2,15 +2,17 @@
 //! the project has with the [sdl2](sdl2) crate.
 
 mod constants;
-
 use crate::constants::COLOR_DEPTH;
+
 use bytemuck::{self, Pod, Zeroable};
+use image;
 use sdl2::{
     pixels::PixelFormatEnum,
     render::{Canvas, TextureCreator},
     video::{Window, WindowContext},
     EventPump,
 };
+use std::path::Path;
 use thiserror::Error;
 
 pub use sdl2::{
@@ -156,6 +158,18 @@ impl ScreenContextManager {
     pub fn get_events(&mut self) -> EventPollIterator {
         self.event_pump.poll_iter()
     }
+
+    /// Saves the current framebuffer as an image whose format is derived from the file extension.
+    pub fn save_img<P: AsRef<Path>>(&self, path: P) -> Result<(), SaveImageError> {
+        let buffer = bytemuck::cast_slice(&self.framebuffer);
+        Ok(image::save_buffer(
+            path,
+            buffer,
+            self.width,
+            self.height,
+            image::ColorType::Rgb8,
+        )?)
+    }
 }
 
 #[derive(Error, Debug)]
@@ -182,10 +196,18 @@ pub enum PresentationError {
     TextureUpdate(#[from] sdl2::render::UpdateTextureError),
     #[error("{0}")]
     TextureValue(#[from] sdl2::render::TextureValueError),
+    #[error("{0}")]
+    SaveCanvasBMP(String),
 }
 
 impl From<String> for PresentationError {
     fn from(msg: String) -> Self {
         PresentationError::CanvasCopy(msg)
     }
+}
+
+#[derive(Error, Debug)]
+pub enum SaveImageError {
+    #[error("{0}")]
+    SaveBMP(#[from] image::error::ImageError),
 }

@@ -66,7 +66,7 @@ async fn screen_loop(mut screen: ScreenContextManager) {
         }
 
         screen
-            .present()
+            .present_async()
             .await
             .unwrap_or_else(|err| println!("Error while presenting screen: {}", err));
 
@@ -76,19 +76,16 @@ async fn screen_loop(mut screen: ScreenContextManager) {
                 // Salirse del programa si se cierra la ventana o estripa Esc
                 Event::Quit { .. } => break 'main,
                 Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'main,
-                Event::KeyDown {
-                    keycode: Some(Keycode::M),
-                    ..
-                } => red = 1.0,
-                Event::KeyDown {
-                    keycode: Some(Keycode::N),
-                    ..
-                } => red = 0.2,
+                    keycode: Some(key), ..
+                } => match key {
+                    Keycode::Escape => break 'main,
+                    Keycode::M => red = 1.0,
+                    Keycode::N => red = 0.2,
+                    _ => (),
+                },
                 _ => (),
             }
         }
     }
+    screen.save_img("examples/example_img.png").unwrap();
 }
