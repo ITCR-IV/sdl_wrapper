@@ -8,13 +8,14 @@ edition = "2018"
 [dependencies]
 sdl2 = "0.35"
 thiserror = "1.0"
-futures = "0.3"
 bytemuck = { version = "1.7.3", features = ["derive"] }
+
+[dev-dependencies]
+futures = "0.3"
 
 [lib]
 name = "sdl_wrapper"
 path = "src/lib.rs"
 
-[[bin]]
-name = "paint_quadrants"
-path = "src/example.rs"
+[[example]]
+name = "quadrants"

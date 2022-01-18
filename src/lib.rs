@@ -64,6 +64,13 @@ impl ScreenContextManager {
         })
     }
 
+    pub fn get_width(&self) -> u32 {
+        self.width
+    }
+    pub fn get_height(&self) -> u32 {
+        self.height
+    }
+
     /// Sets the color to be used for drawing operations.
     /// Parameters correspond to RGB colors and must be real numbers in the range [0, 1].
     pub fn set_color(&mut self, r: f32, g: f32, b: f32) {
@@ -104,8 +111,28 @@ impl ScreenContextManager {
         self.framebuffer.fill(color);
     }
 
+    /// Presents the current contents of the framebuffer on the window's canvas (async)
+    pub async fn present_async(&mut self) -> Result<(), PresentationError> {
+        let mut texture = self.texture_creator.create_texture_streaming(
+            PixelFormatEnum::RGB24,
+            self.width,
+            self.height,
+        )?;
+
+        texture.update(
+            None,
+            bytemuck::cast_slice(&self.framebuffer),
+            (self.width_times_color) as usize,
+        )?;
+
+        self.canvas.copy(&texture, None, None)?;
+        self.canvas.present();
+
+        Ok(())
+    }
+
     /// Presents the current contents of the framebuffer on the window's canvas
-    pub async fn present(&mut self) -> Result<(), PresentationError> {
+    pub fn present(&mut self) -> Result<(), PresentationError> {
         let mut texture = self.texture_creator.create_texture_streaming(
             PixelFormatEnum::RGB24,
             self.width,
